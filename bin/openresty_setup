@@ -4,6 +4,8 @@
 THE_ARGS="$@"
 THIS_DIR="$(dirname "$(dirname "$0")")"
 
+export PATH="$PATH:$THIS_DIR/../sh_color/bin"
+
 if [[ -z "$@" ]]; then
   action="watch"
 else
