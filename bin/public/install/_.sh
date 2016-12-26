@@ -1,13 +1,17 @@
 
+source "$THIS_DIR/bin/public/available/_.sh"
+
 # === {{CMD}}  --args --to-configure
-# === The PREFIX is set to a relative path by default: ./progs/openresty
+# === The PREFIX is set to a relative path by default: $PWD/progs/openresty
+# === NOTE: NGINX error-log-path is set to $PWD/tmp/openresty.error.log.
+# ===       See: https://trac.nginx.org/nginx/ticket/147
 install () {
 
-  local +x PREFIX="./progs/openresty"
   local +x ORIGIN="$PWD"
+  local +x PREFIX="$ORIGIN/progs/openresty"
   local +x TMP_DIR="$THIS_DIR/tmp"
 
-  local +x LATEST_VER="$((git ls-remote -t https://github.com/openresty/openresty | cut -d'/' -f 3 | sort -r | grep -P '^v[0-9\.]+$' | head -n 1 | cut -d'v' -f2) || :)"
+  local +x LATEST_VER="$((available | head -n 1) || :)"
   local +x ARCHIVE="openresty-${LATEST_VER}.tar.gz"
   local +x SOURCE_DIR="openresty-${LATEST_VER}"
   local +x PROCS="$(grep -c '^processor' /proc/cpuinfo)"
@@ -22,27 +26,31 @@ install () {
   cd "$SOURCE_DIR"
   ./configure \
     --prefix="$PREFIX"             \
+                                   \
     --with-http_iconv_module       \
-    --without-http_redis2_module   \
     --with-pcre-jit                \
     --with-luajit                  \
     --with-ipv6                    \
     --with-http_ssl_module         \
+                                   \
+    --without-http_redis2_module   \
+    --without-mail_pop3_module     \
+    --without-mail_imap_module     \
+    --without-mail_smtp_module     \
+                                   \
+    --error-log-path="$ORIGIN/tmp/openresty.error.log" \
+    --http-log-path="$ORIGIN/tmp/openresty.access.log" \
     -j$(($PROCS - 1))              \
     $@
   make
   make install
 
-  cd "$ORIGIN"
-  mkdir -p progs
-  if [[ -d "progs/openresty" ]]; then
-    sh_color ORANGE "=== removing old OpenResty..."
-    rm -rf "progs/openresty"
+  cd "$ORIGIN/progs/openresty/luajit/lib"
+  if [[ -e libluajit-5.1.so.2 ]]; then
+    echo "=== Skipping fix: linking libluajit-5.1.so.2.1.0"
+  else
+    ln -s libluajit-5.1.so.2.1.0 libluajit-5.1.so.2
   fi
-  mv -i "$TMP_DIR/$SOURCE_DIR/progs/openresty" "$ORIGIN/progs/openresty"
-
-  cd progs/openresty/luajit/lib
-  ln -s libluajit-5.1.so.2.1.0 libluajit-5.1.so.2
 	cd "$ORIGIN"
 
   echo -n "=== Installed: "
@@ -51,6 +59,7 @@ install () {
 } # === end function
 
 untar-file () {
+  sh_color ORANGE "=== Extracting: {{$1}}"
   { tar -xvf $1 >/dev/null && return 0; } || :
   rm $1
   rm -rf "$2"
@@ -62,6 +71,7 @@ download-file () {
     echo "=== File already exists: $1"
     return 0
   fi
+  sh_color ORANGE "=== Downloading: {{$1}}"
   wget --quiet "https://openresty.org/download/$1"
 }
 
