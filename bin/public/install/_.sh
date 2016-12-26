@@ -45,14 +45,7 @@ install () {
   make
   make install
 
-  cd "$ORIGIN/progs/openresty/luajit/lib"
-  if [[ -e libluajit-5.1.so.2 ]]; then
-    echo "=== Skipping fix: linking libluajit-5.1.so.2.1.0"
-  else
-    ln -s libluajit-5.1.so.2.1.0 libluajit-5.1.so.2
-  fi
 	cd "$ORIGIN"
-
   echo -n "=== Installed: "
   progs/openresty/nginx/sbin/nginx -v
 
